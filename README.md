@@ -1,6 +1,6 @@
 # ecommerce_app
 
-A new Flutter project.
+"Full-featured e-commerce app in Flutter — Riverpod, REST API, auth, cart, checkout UI, dark mode"
 
 ## Getting Started
 
