@@ -4,21 +4,35 @@ import 'package:flutter_riverpod/legacy.dart';
 import '../model/cart_item_model.dart';
 import '../model/product_model.dart';
 
+
 class CartNotifier extends StateNotifier<List<CartItem>> {
   final Ref ref;
+  String? _userKey;
 
-  CartNotifier(this.ref) : super([]) {
-    _loadCart();
+  CartNotifier(this.ref) : super([]);
+
+  /// Loads the cart belonging to [userKey] (the user's email). Call this
+  /// right after login/register, and on app start if a session already
+  /// exists, so each account sees only its own cart.
+  Future<void> loadForUser(String userKey) async {
+    _userKey = userKey;
+    final storage = ref.read(storageServiceProvider);
+    state = await storage.loadCart(userKey);
   }
 
-  Future<void> _loadCart() async {
-    final storage = ref.read(storageServiceProvider);
-    state = await storage.loadCart();
+  /// Clears the in-memory cart when logging out, WITHOUT touching what's
+  /// saved on disk — the data is still there under this user's key and
+  /// will reappear next time they log back in via [loadForUser].
+  void clearSession() {
+    _userKey = null;
+    state = [];
   }
 
   Future<void> _persist() async {
+    final userKey = _userKey;
+    if (userKey == null) return; // no active session — nothing to save to
     final storage = ref.read(storageServiceProvider);
-    await storage.saveCart(state);
+    await storage.saveCart(userKey, state);
   }
 
   void addToCart(Product product) {
@@ -62,6 +76,9 @@ class CartNotifier extends StateNotifier<List<CartItem>> {
     _persist();
   }
 
+  /// Empties the CURRENT user's cart on disk too (e.g. after checkout
+  /// completes). Different from [clearSession], which only clears the
+  /// in-memory view and keeps the saved data intact.
   void clearCart() {
     state = [];
     _persist();

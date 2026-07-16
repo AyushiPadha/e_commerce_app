@@ -50,16 +50,16 @@ class StorageService {
     return prefs.getString(ApiConstants.keyThemeMode);
   }
 
-  // --- Cart ---
-  Future<void> saveCart(List<CartItem> items) async {
+  // --- Cart (keyed per-user so different accounts don't share a cart) ---
+  Future<void> saveCart(String userKey, List<CartItem> items) async {
     final prefs = await _prefs;
     final encoded = jsonEncode(items.map((e) => e.toJson()).toList());
-    await prefs.setString(ApiConstants.keyCartItems, encoded);
+    await prefs.setString('${ApiConstants.keyCartItems}_$userKey', encoded);
   }
 
-  Future<List<CartItem>> loadCart() async {
+  Future<List<CartItem>> loadCart(String userKey) async {
     final prefs = await _prefs;
-    final raw = prefs.getString(ApiConstants.keyCartItems);
+    final raw = prefs.getString('${ApiConstants.keyCartItems}_$userKey');
     if (raw == null || raw.isEmpty) return [];
     final List<dynamic> decoded = jsonDecode(raw) as List<dynamic>;
     return decoded
@@ -67,18 +67,18 @@ class StorageService {
         .toList();
   }
 
-  // --- Favorites ---
-  Future<void> saveFavoriteIds(Set<int> ids) async {
+  // --- Favorites (keyed per-user, same reasoning as cart) ---
+  Future<void> saveFavoriteIds(String userKey, Set<int> ids) async {
     final prefs = await _prefs;
     await prefs.setStringList(
-      ApiConstants.keyFavoriteIds,
+      '${ApiConstants.keyFavoriteIds}_$userKey',
       ids.map((e) => e.toString()).toList(),
     );
   }
 
-  Future<Set<int>> loadFavoriteIds() async {
+  Future<Set<int>> loadFavoriteIds(String userKey) async {
     final prefs = await _prefs;
-    final raw = prefs.getStringList(ApiConstants.keyFavoriteIds) ?? [];
+    final raw = prefs.getStringList('${ApiConstants.keyFavoriteIds}_$userKey') ?? [];
     return raw.map((e) => int.tryParse(e) ?? -1).where((e) => e != -1).toSet();
   }
 }

@@ -1,7 +1,11 @@
 import 'package:ecommerce_app/providers/service_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+
 import '../model/user_model.dart';
+import 'cart_provider.dart';
+import 'favorites_provider.dart';
+
 
 enum AuthStatus { unknown, authenticated, unauthenticated }
 
@@ -44,6 +48,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> _init() async {
     final authService = ref.read(authServiceProvider);
     final user = await authService.currentUser();
+    if (user != null) {
+      await ref.read(cartProvider.notifier).loadForUser(user.email);
+      await ref.read(favoritesProvider.notifier).loadForUser(user.email);
+    }
     state = state.copyWith(
       status: user != null ? AuthStatus.authenticated : AuthStatus.unauthenticated,
       user: user,
@@ -55,6 +63,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       final authService = ref.read(authServiceProvider);
       final user = await authService.login(email: email, password: password);
+      await ref.read(cartProvider.notifier).loadForUser(user.email);
+      await ref.read(favoritesProvider.notifier).loadForUser(user.email);
       state = state.copyWith(
         status: AuthStatus.authenticated,
         user: user,
@@ -73,6 +83,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final authService = ref.read(authServiceProvider);
       final user =
       await authService.register(name: name, email: email, password: password);
+      await ref.read(cartProvider.notifier).loadForUser(user.email);
+      await ref.read(favoritesProvider.notifier).loadForUser(user.email);
       state = state.copyWith(
         status: AuthStatus.authenticated,
         user: user,
@@ -88,6 +100,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> logout() async {
     final authService = ref.read(authServiceProvider);
     await authService.logout();
+    // clearSession only resets the in-memory view — the saved cart and
+    // favorites for this account stay on disk under their own key, so
+    // they're restored next time this same user logs back in.
+    ref.read(cartProvider.notifier).clearSession();
+    ref.read(favoritesProvider.notifier).clearSession();
     state = const AuthState(status: AuthStatus.unauthenticated);
   }
 }
